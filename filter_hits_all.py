@@ -68,9 +68,10 @@ def run() :
         data = TrimTrkHits(data)
 
         # filter data
-        dedx_mask1 = filter_event_for_dedx(data) # masks tracks
-        dedx_mask2 = dedx_mask1 & filter_plane_for_dedx(data) # masks track planes
-        dedx_mask = dedx_mask2 & filter_ke_pitch(data)
+        dedx_mask = filter_event_for_dedx(data) # masks tracks
+        dedx_mask = dedx_mask & filter_plane_for_dedx(data) # masks track planes
+        dedx_mask = dedx_mask & filter_ke_pitch(data)
+
         yz_mask = filter_event_for_yz_corr(data)
 
         crosser_mask = np.sign(data.trkstartx) != np.sign(data.trkendx)
@@ -157,15 +158,15 @@ def FillTrees(outf, d, masks) :
         t.extend(thistreed)
 
 def WhichMask(treename) :
-    match treename.split('tree') :
-        case ['',''] :
-            return 'def'
-        case ['dedx_','']:
-            return 'dedx'
-        case ['x_',plane] :
-            return f'x{plane}'
-        case ['yz_',plane] :
-            return f'yz{plane}'
+    name_split = treename.split('tree')
+    if  name_split == ['',''] :
+        return 'def'
+    elif name_split == ['dedx_','']:
+        return 'dedx'
+    elif name_split[0] == 'x_' :
+        return f'x{name_split[1]}'
+    elif name_split[0] == 'yz_' :
+        return f'yz{name_split[1]}'
 
 
 def filter_trk_angles(d) :
@@ -197,14 +198,14 @@ def filter_trk_angles(d) :
 def filter_event_for_dedx(d):
     # skip non-crossers
     crosser_mask = np.sign(d.trkstartx) != np.sign(d.trkendx)
+
     # cuts on peak time, trak length, APA gap
-    mask = \
-        (d.peakT_min < config.peakT_min) | (d.peakT_max < config.peakT_max) | \
-        (d.trklen < config.track_len_min) | (d.trklen > config.track_len_max) | \
-        ((d.trkendz > config.track_ediv_min) & (d.trkendz < config.track_ediv_max)) | \
-        ((d.trkstartz > config.track_ediv_min) & (d.trkstartz < config.track_ediv_max)) | \
-        ((d.trkendz > config.track_ediv2_min) & (d.trkendz < config.track_ediv2_max)) | \
-        ((d.trkstartz > config.track_ediv2_min) & (d.trkstartz < config.track_ediv2_max))
+    mask =        (d.peakT_min < config.peakT_min) | (d.peakT_max > config.peakT_max)
+    mask = mask | (d.trklen < config.track_len_min) | (d.trklen > config.track_len_max)
+    mask = mask | ((d.trkendz > config.track_ediv_min) & (d.trkendz < config.track_ediv_max))
+    mask = mask | ((d.trkstartz > config.track_ediv_min) & (d.trkstartz < config.track_ediv_max))
+    mask = mask | ((d.trkendz > config.track_ediv2_min) & (d.trkendz < config.track_ediv2_max))
+    mask = mask | ((d.trkstartz > config.track_ediv2_min) & (d.trkstartz < config.track_ediv2_max))
 
     # make sure this is a clean track - no hist close by or made of sparse hits
     mask = crosser_mask & ~(mask | (d.adjacent_hits != 0) | (d.dist_min > 5))
