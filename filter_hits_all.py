@@ -92,7 +92,7 @@ def run() :
                       ('yz',yz_mask),
                       ('x',x_mask)
                       ] +
-                     [(f'{l}{i}',m & (plane==i)) for l,m in (('x',x_mask),('yz',yz_mask)) for i in range(3)])
+                     [(f'{l}_{i}',m & (plane==i)) for l,m in (('x',x_mask),('yz',yz_mask)) for i in range(3)])
 
         FillTrees(outf, data, masks)
 
@@ -273,8 +273,8 @@ def filter_hit_x(d) :
 
 def PrepareOutputTrees(outf) :
     tree_names = ['tree',
-                  [f'yz_tree{i}' for i in range(3)],
-                  [f'x_tree{i}' for i in range(3)],
+                  [f'yz_tree_{i}' for i in range(3)],
+                  [f'x_tree_{i}' for i in range(3)],
                   f'dedx_tree',
                   ]
 
@@ -354,12 +354,12 @@ def GetKESpline() :
 def GetEFieldHists() :
     efield_file = ur.open(args.e)
     if config.do_true_efield:
-        pos_hists = [efield_file[f'True_ElecField_{i}'] for i in ['X', 'Y', 'Z']]
+        pos_hists = [efield_file[f'True_ElecField_{i}'] for i in 'XYZ']
         neg_hists = pos_hists
         #print(pos_hists, neg_hists)
     else:
-        pos_hists = [efield_file[f'Reco_ElecField_{i}_Pos'] for i in ['X', 'Y', 'Z']]
-        neg_hists = [efield_file[f'Reco_ElecField_{i}_Neg'] for i in ['X', 'Y', 'Z']]
+        pos_hists = [efield_file[f'Reco_ElecField_{i}_Pos'] for i in 'XYZ']
+        neg_hists = [efield_file[f'Reco_ElecField_{i}_Neg'] for i in 'XYZ']
 
     return pos_hists,neg_hists
 
@@ -394,14 +394,13 @@ def GetEfieldInterpolators():
     return interp
 
 def get_efield(d):
-    global efield_interpolators
+    global efield_interpolators,config
     interp=efield_interpolators
-    E0 = 0.4867
     xyz = np.stack([ak.ravel(d[key]) for key in [f'trkhit{i}' for i in 'xyz']],axis=-1)
     e = ak.zip({ax:ak.where(xyz[...,0]<0., interp['neg'][ax](xyz),interp['pos'][ax](xyz)) for ax in 'xyz'})
     e['x'] = e.x + 1
     e = np.sqrt(e.x**2 + e.y**2 + e.z**2)
-    e = e*E0
+    e = e*config.E0
     return RebuildLike(e, d.trkhitx)
 
 def Roll(data, offsets) :
@@ -515,6 +514,7 @@ def get_config():
       'do_true_efield':False,
       'big_angle': 140.,
       'small_angle': 40.,
+      'E0': 0.4867,
       #'do_combined_efield':false,
     }
 
