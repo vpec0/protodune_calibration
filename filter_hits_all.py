@@ -59,7 +59,7 @@ def run() :
     nprocessed = 0
     for data in GetData(input_files) :
         print(f'Processed {nprocessed} events')
-        if nprocessed >= args.n :
+        if args.n > -1 and nprocessed >= args.n :
             break
         nprocessed += len(data)
         # zip data to the track level
